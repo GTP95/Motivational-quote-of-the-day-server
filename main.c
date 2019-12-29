@@ -7,12 +7,15 @@
 #include <string.h>
 #include <time.h>
 #include <stdbool.h>
-#include <signal.h>
+#include <pthread.h>
 
 
 #define PORT 1717
 
 int day;
+char* QOTD;
+pthread_mutex_t quoteLock=PTHREAD_MUTEX_INITIALIZER;
+pthread_t checkForNewDayThread, connectionHandlerThread;
 
 int line_count(const char* file){
     int count=0;
@@ -58,34 +61,81 @@ char* read_random_quote_from_file(const char* filePath){
 }
 
 bool a_day_has_passed() {
-
+    //https://stackoverflow.com/questions/1442116/how-to-get-the-date-and-time-values-in-a-c-program
+    time_t time1=time(NULL); //number of second elapsed since epoch
+    struct tm tm = *localtime(&time1);
+    int currentDay=tm.tm_mday; //The day of the month, in the range 1 to 31
+    if(currentDay!=day){
+        day=currentDay;
+        return true;
+    }
+    return false;
 }
 
-void signal_handler(int signal) {
-    a_day_has_passed();
+void * timer_thread_code(){ //The thread will act as a timer checking every hour if a day has passed
+    while (true) {
+        sleep(3600);
+        if (a_day_has_passed()) {
+            pthread_mutex_lock(&quoteLock);
+            QOTD = read_random_quote_from_file("quotes.txt");
+            pthread_mutex_unlock(&quoteLock);
+        }
+    }
+}
+
+void * connection_thread_code(){    //Code for the thread to handle connections
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    int opt = 1;
+    int addrlen = sizeof(address);
+    char buffer[1024] = {0};
+
+    // Creating socket file descriptor
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    {
+        perror("socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Forcefully attaching socket to the port 1717
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons( PORT );
+
+    // Forcefully attaching socket to the port 1717
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0)
+    {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+    if (listen(server_fd, 100) < 0)
+    {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Listening on port %i\n", PORT);
+
+    while(1) {  //connection handler loop
+        if ((new_socket = accept(server_fd, (struct sockaddr *) &address, (socklen_t *) &addrlen)) < 0) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+        pthread_mutex_lock(&quoteLock);
+        send(new_socket, QOTD, strlen(QOTD), 0);
+        pthread_mutex_unlock(&quoteLock);
+        close(new_socket);
+    }
 }
 
 int main(int argc, char const *argv[])
 {
-	int server_fd, new_socket;
-	struct sockaddr_in address;
-	int opt = 1;
-	int addrlen = sizeof(address);
-	char buffer[1024] = {0};
-	char *QOTD = read_random_quote_from_file("quotes.txt");
 
-	/*to check if a day has passed I create a timer that sends a SIGUSR1 signal every hour. The signal gets hamdled by
-	 * the program by calling the a_day_has_passed() function. If a day has passed, the quote gets replaced.
-	 */
-
-	//set handler for signal SIGUSR1 (timer elapsed)
-	struct sigaction timerElapsedAction;
-
-	sigaction(SIGUSR1, );
-	sigevent_t notification={SIGEV_SIGNAL, SIGUSR1};  //check man for sigevent(7)
-	//create a timer that sends SIGUSR1 every hour
-    timer_t* checkNewDayTimer=(timer_t)malloc(sizeof(timer_t));
-	timer_create(CLOCK_REALTIME, &notification, checkNewDayTimer);  //todo: correctly check for errors //check man for timer_create(2)
 
 	//https://stackoverflow.com/questions/1442116/how-to-get-the-date-and-time-values-in-a-c-program
 	time_t time1=time(NULL); //number of second elapsed since epoch
@@ -97,45 +147,11 @@ int main(int argc, char const *argv[])
 
     srand(time1);  //To randomize quotes
 
-	// Creating socket file descriptor
-	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-	{
-		perror("socket failed");
-		exit(EXIT_FAILURE);
-	}
+    QOTD = read_random_quote_from_file("quotes.txt");   //No need to acquire lock here since the "timer" thread isn't even started
 
-	// Forcefully attaching socket to the port 1717
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-	{
-		perror("setsockopt");
-		exit(EXIT_FAILURE);
-	}
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons( PORT );
-
-	// Forcefully attaching socket to the port 1717
-	if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0)
-	{
-		perror("bind failed");
-		exit(EXIT_FAILURE);
-	}
-	if (listen(server_fd, 100) < 0)
-	{
-		perror("listen");
-		exit(EXIT_FAILURE);
-	}
-
-	printf("Listening on port %i\n", PORT);
-
-	while(1) {  //connection handler loop
-        if ((new_socket = accept(server_fd, (struct sockaddr *) &address, (socklen_t *) &addrlen)) < 0) {
-            perror("accept");
-            exit(EXIT_FAILURE);
-        }
-
-        send(new_socket, QOTD, strlen(QOTD), 0);
-        close(new_socket);
-    }
+    pthread_create(&connectionHandlerThread, NULL, connection_thread_code(), NULL);
+    pthread_create(&checkForNewDayThread, NULL, timer_thread_code(), NULL);
+    pthread_join(connectionHandlerThread, NULL);
+    
 	return 0;
 }
