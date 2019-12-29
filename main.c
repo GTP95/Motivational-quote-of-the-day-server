@@ -152,6 +152,6 @@ int main(int argc, char const *argv[])
     pthread_create(&connectionHandlerThread, NULL, connection_thread_code(), NULL);
     pthread_create(&checkForNewDayThread, NULL, timer_thread_code(), NULL);
     pthread_join(connectionHandlerThread, NULL);
-    
+
 	return 0;
 }
