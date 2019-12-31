@@ -161,7 +161,7 @@ int main(int argc, char const *argv[])
 
     srand(time1);  //To randomize quotes
 
-    QOTD = read_random_quote_from_file(pathToQOTDfile);   //No need to acquire lock here since the "timer" thread isn't even started
+    QOTD = read_random_quote_from_file(pathToQOTDfile);   //No need to acquire lock here since no thread is even started
 
     pthread_create(&connectionHandlerThread, NULL, connection_thread_code(port), NULL);
     pthread_create(&checkForNewDayThread, NULL, timer_thread_code(), NULL);
