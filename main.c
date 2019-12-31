@@ -9,11 +9,8 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-
-#define PORT 1717
-
-int day;
-char* QOTD;
+int day, port;
+char *QOTD, *pathToQOTDfile;
 pthread_mutex_t quoteLock=PTHREAD_MUTEX_INITIALIZER;
 pthread_t checkForNewDayThread, connectionHandlerThread;
 
@@ -77,18 +74,15 @@ void * timer_thread_code(){ //The thread will act as a timer checking every hour
         sleep(3600);
         if (a_day_has_passed()) {
             pthread_mutex_lock(&quoteLock);
-            QOTD = read_random_quote_from_file("quotes.txt");
+            QOTD = read_random_quote_from_file(pathToQOTDfile);
             pthread_mutex_unlock(&quoteLock);
         }
     }
 }
 
-void * connection_thread_code(){    //Code for the thread to handle connections
-    int server_fd, new_socket;
+void * connection_thread_code(int port){    //Code for the thread to handle connections
     struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
-    char buffer[1024] = {0};
+    int server_fd, new_socket, opt = 1, addrlen = sizeof(address);
 
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -105,7 +99,7 @@ void * connection_thread_code(){    //Code for the thread to handle connections
     }
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons( PORT );
+    address.sin_port = htons( port );
 
     // Forcefully attaching socket to the port 1717
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0)
@@ -119,7 +113,7 @@ void * connection_thread_code(){    //Code for the thread to handle connections
         exit(EXIT_FAILURE);
     }
 
-    printf("Listening on port %i\n", PORT);
+    printf("Listening on port %i\n", port);
 
     while(1) {  //connection handler loop
         if ((new_socket = accept(server_fd, (struct sockaddr *) &address, (socklen_t *) &addrlen)) < 0) {
@@ -142,14 +136,34 @@ int main(int argc, char const *argv[])
     struct tm tm = *localtime(&time1);
     day=tm.tm_mday; //The day of the month, in the range 1 to 31
 
+    switch(argc){   //Read settings from terminal or use defaults
+        case 1:{ //No input from user, use defaults
+            port=1717;
+            pathToQOTDfile=strdup("quotes.txt");
+            break;
+        }
+        case 3:{    //file and port specified by user
+            port=atoi(argv[1]);
+            pathToQOTDfile=argv[2];
+            break;
+        }
+        default:{
+            fprintf(stderr,"Bad arguments\n");
+            fprintf(stderr,"Usage:\n%s [path_to_quotes_file] [port]\nBy default reads qoutes from a file called \"quotes.txt\" in the current directory and listens on port 1717.\nNOTE: the standard port of QOTD protocol is 17.\nOnce you specify an argument all arguments became mandatory.\nThe file containing the quotes must be a txt file containig one quote per line and ending with exactly one newline\n", argv[0]);
+            exit(EXIT_FAILURE);
+            //Not necessary to call break since we call exit
+        }
+
+    }
+
 	printf("Running as user %s", getlogin());
 	printf("\n");
 
     srand(time1);  //To randomize quotes
 
-    QOTD = read_random_quote_from_file("quotes.txt");   //No need to acquire lock here since the "timer" thread isn't even started
+    QOTD = read_random_quote_from_file(pathToQOTDfile);   //No need to acquire lock here since the "timer" thread isn't even started
 
-    pthread_create(&connectionHandlerThread, NULL, connection_thread_code(), NULL);
+    pthread_create(&connectionHandlerThread, NULL, connection_thread_code(port), NULL);
     pthread_create(&checkForNewDayThread, NULL, timer_thread_code(), NULL);
     pthread_join(connectionHandlerThread, NULL);
 
