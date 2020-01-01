@@ -10,4 +10,4 @@ add_executable(Motivational_quote_of_the_day_server main.c)
 
 target_link_libraries(Motivational_quote_of_the_day_server -lpthread)
 
-install(CODE "execute_process(COMMAND install.sh)")
+install(CODE "execute_process(COMMAND ./install.sh)")

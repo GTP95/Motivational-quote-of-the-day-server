@@ -7,3 +7,5 @@ Type=simple
 User=qotd
 ExecStart=mqotd /home/qotd/quotes.txt
 
+[Install]
+WantedBy=multi-user.target
