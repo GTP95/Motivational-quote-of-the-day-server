@@ -143,8 +143,8 @@ int main(int argc, char const *argv[])
             break;
         }
         case 3:{    //file and port specified by user
-            port=atoi(argv[1]);
-            pathToQOTDfile=argv[2];
+            port=atoi(argv[2]);
+            pathToQOTDfile=argv[1];
             break;
         }
         default:{
