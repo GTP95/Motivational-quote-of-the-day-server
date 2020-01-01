@@ -1,0 +1,9 @@
+[Unit]
+Description=A simple QOTD server that serves daily motivational quotes
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=qotd
+ExecStart=mqotd
+
