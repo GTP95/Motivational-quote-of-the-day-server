@@ -8,6 +8,13 @@
 #include <time.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <errno.h>
+
+#define handle_error_en(en, msg) \
+               do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+#define handle_error(msg) \
+               do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
 
 int day, port;
 char *QOTD, *pathToQOTDfile;
@@ -129,7 +136,7 @@ void * connection_thread_code(int port){    //Code for the thread to handle conn
 
 int main(int argc, char const *argv[])
 {
-
+    int thread1, thread2, join;
 
 	//https://stackoverflow.com/questions/1442116/how-to-get-the-date-and-time-values-in-a-c-program
 	time_t time1=time(NULL); //number of second elapsed since epoch
@@ -163,9 +170,11 @@ int main(int argc, char const *argv[])
 
     QOTD = read_random_quote_from_file(pathToQOTDfile);   //No need to acquire lock here since no thread is even started
 
-    pthread_create(&connectionHandlerThread, NULL, connection_thread_code(port), NULL);
-    pthread_create(&checkForNewDayThread, NULL, timer_thread_code(), NULL);
-    pthread_join(connectionHandlerThread, NULL);
-
+    thread1=pthread_create(&connectionHandlerThread, NULL, connection_thread_code(port), NULL);
+    if(thread1!=0) handle_error_en(thread1, "pthread_create");
+    thread2=pthread_create(&checkForNewDayThread, NULL, timer_thread_code(), NULL);
+    if(thread2!=0) handle_error_en(thread2, "pthread_create");
+    join=pthread_join(connectionHandlerThread, NULL);
+    if(join!=0) handle_error_en(join, "pthread_join");
 	return 0;
 }
