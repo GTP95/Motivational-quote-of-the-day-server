@@ -5,7 +5,7 @@ After=syslog.target network.target
 [Service]
 Type=simple
 User=qotd
-ExecStart=/usr/bin/mqotd /home/qotd/quotes.txt 1717
+ExecStart=/home/qotd/mqotd
 
 [Install]
 WantedBy=multi-user.target
