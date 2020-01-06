@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD 11)
 set(GCC_OPTIMIZATION_FLAGS "-O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_OPTIMIZATION_FLAGS}")
 
-add_executable(Motivational_quote_of_the_day_server main.c)
+add_executable(mqotd main.c)
 
-target_link_libraries(Motivational_quote_of_the_day_server -lpthread)
+target_link_libraries(mqotd -lpthread)
 
 install(CODE "execute_process(COMMAND ./install.sh)")
