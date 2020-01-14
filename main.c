@@ -17,13 +17,14 @@
 
 
 int day, port;
-char *QOTD, *pathToQOTDfile;
+char *QOTD;
+const char *pathToQOTDfile;
 pthread_mutex_t quoteLock=PTHREAD_MUTEX_INITIALIZER;
 pthread_t checkForNewDayThread, connectionHandlerThread;
 
 int line_count(const char* file){
     int count=0;
-    char currentChar;
+    int currentChar;
     FILE* fd=fopen(file,"r");
     if(fd==NULL){
         perror("Error opening the quotes file");
