@@ -41,7 +41,8 @@ int line_count(const char* file){
                 fclose(fd);
                 return count;
             }
-
+            default:
+                continue;
         }
     }
 }
@@ -135,6 +136,8 @@ void * connection_thread_code(int port){    //Code for the thread to handle conn
     }
 }
 
+
+
 int main(int argc, char const *argv[])
 {
     int thread1, thread2, join;
@@ -166,6 +169,7 @@ int main(int argc, char const *argv[])
 
 	printf("Running as user %s", getlogin());
 	printf("\n");
+	printf("The quotes file appears to contain %i quotes\n", line_count(pathToQOTDfile));
 
     srand(time1);  //To randomize quotes
 
