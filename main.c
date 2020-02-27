@@ -77,9 +77,13 @@ bool a_day_has_passed() {
 }
 
 void * timer_thread_code(){ //The thread will act as a timer checking every hour if a day has passed
+    printf("Timer thread started\n");
     while (true) {
+	printf("Timer thread is going to sleep\n");
         sleep(3600);
+	printf("Timer thread just woke up\n");
         if (a_day_has_passed()) {
+	    printf("Timer thread has detected a new day\n");
             pthread_mutex_lock(&quoteLock);
             QOTD = read_random_quote_from_file(pathToQOTDfile);
             pthread_mutex_unlock(&quoteLock);
@@ -87,9 +91,11 @@ void * timer_thread_code(){ //The thread will act as a timer checking every hour
     }
 }
 
-void * connection_thread_code(int port){    //Code for the thread to handle connections
+void * connection_thread_code(void* port_ptr){    //Code for the thread to handle connections
     struct sockaddr_in address;
-    int server_fd, new_socket, opt = 1, addrlen = sizeof(address);
+    int server_fd, new_socket, opt = 1, addrlen = sizeof(address), port=*((int*) port_ptr);
+
+    free(port_ptr);
 
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
@@ -137,20 +143,25 @@ void * connection_thread_code(int port){    //Code for the thread to handle conn
 int main(int argc, char const *argv[])
 {
     int thread1, thread2, join;
+    int* port=malloc(sizeof(int));
+    if(port==NULL){
+	perror("Couldn't allocate memory to store listening port");
+	exit(EXIT_FAILURE);
+    }
 
 	//https://stackoverflow.com/questions/1442116/how-to-get-the-date-and-time-values-in-a-c-program
-	time_t time1=time(NULL); //number of second elapsed since epoch
+    time_t time1=time(NULL); //number of seconds elapsed since epoch
     struct tm tm = *localtime(&time1);
     day=tm.tm_mday; //The day of the month, in the range 1 to 31
 
     switch(argc){   //Read settings from terminal or use defaults
         case 1:{ //No input from user, use defaults
-            port=1717;
+            *port=1717;
             pathToQOTDfile=strdup("quotes.txt");
             break;
         }
         case 3:{    //file and port specified by user
-            port=atoi(argv[2]);
+            *port=atoi(argv[2]);
             pathToQOTDfile=argv[1];
             break;
         }
@@ -170,11 +181,16 @@ int main(int argc, char const *argv[])
 
     QOTD = read_random_quote_from_file(pathToQOTDfile);   //No need to acquire lock here since no thread is even started
 
-    thread1=pthread_create(&connectionHandlerThread, NULL, connection_thread_code(port), NULL);
+
+
+    thread1=pthread_create(&connectionHandlerThread, NULL, &connection_thread_code, port);
     if(thread1!=0) handle_error_en(thread1, "pthread_create");
-    thread2=pthread_create(&checkForNewDayThread, NULL, timer_thread_code(), NULL);
+
+    thread2=pthread_create(&checkForNewDayThread, NULL, &timer_thread_code, NULL);
     if(thread2!=0) handle_error_en(thread2, "pthread_create");
-    join=pthread_join(connectionHandlerThread, NULL);
+
+    join=pthread_join(checkForNewDayThread, NULL);
     if(join!=0) handle_error_en(join, "pthread_join");
-	return 0;
+
+    return 0;
 }
