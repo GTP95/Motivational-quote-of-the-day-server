@@ -17,13 +17,14 @@
 
 
 int day, port;
-char *QOTD, *pathToQOTDfile;
+char *QOTD;
+const char *pathToQOTDfile;
 pthread_mutex_t quoteLock=PTHREAD_MUTEX_INITIALIZER;
 pthread_t checkForNewDayThread, connectionHandlerThread;
 
 int line_count(const char* file){
     int count=0;
-    char currentChar;
+    int currentChar;
     FILE* fd=fopen(file,"r");
     if(fd==NULL){
         perror("Error opening the quotes file");
@@ -40,7 +41,8 @@ int line_count(const char* file){
                 fclose(fd);
                 return count;
             }
-
+            default:
+                continue;
         }
     }
 }
@@ -140,6 +142,8 @@ void * connection_thread_code(void* port_ptr){    //Code for the thread to handl
     }
 }
 
+
+
 int main(int argc, char const *argv[])
 {
     int thread1, thread2, join;
@@ -176,6 +180,7 @@ int main(int argc, char const *argv[])
 
 	printf("Running as user %s", getlogin());
 	printf("\n");
+	printf("The quotes file appears to contain %i quotes\n", line_count(pathToQOTDfile));
 
     srand(time1);  //To randomize quotes
 
