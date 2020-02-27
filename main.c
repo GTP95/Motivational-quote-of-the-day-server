@@ -79,13 +79,9 @@ bool a_day_has_passed() {
 }
 
 void * timer_thread_code(){ //The thread will act as a timer checking every hour if a day has passed
-    printf("Timer thread started\n");
     while (true) {
-	printf("Timer thread is going to sleep\n");
         sleep(3600);
-	printf("Timer thread just woke up\n");
         if (a_day_has_passed()) {
-	    printf("Timer thread has detected a new day\n");
             pthread_mutex_lock(&quoteLock);
             QOTD = read_random_quote_from_file(pathToQOTDfile);
             pthread_mutex_unlock(&quoteLock);
