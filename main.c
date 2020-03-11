@@ -144,6 +144,7 @@ int main(int argc, char const *argv[])
 {
     int thread1, thread2, join;
     int* port=malloc(sizeof(int));
+
     if(port==NULL){
 	perror("Couldn't allocate memory to store listening port");
 	exit(EXIT_FAILURE);
@@ -178,7 +179,7 @@ int main(int argc, char const *argv[])
 	printf("\n");
 	printf("The quotes file appears to contain %i quotes\n", line_count(pathToQOTDfile));
 
-    srand(time1);  //To randomize quotes
+        srand(time1);  //To randomize quotes
 
     QOTD = read_random_quote_from_file(pathToQOTDfile);   //No need to acquire lock here since no thread is even started
 
